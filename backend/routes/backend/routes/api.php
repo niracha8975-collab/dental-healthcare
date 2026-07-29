@@ -275,3 +275,15 @@ Route::prefix('v1')
     });
 
 });
+API Versioning
+/api/v1/auth
+
+/api/v1/patients
+
+/api/v1/appointments
+
+/api/v1/queues
+
+/api/v1/reports
+พร้อมรองรับ
+/api/v2
