@@ -1,0 +1,192 @@
+###############################################################################
+# Dental Healthcare Management System
+# Docker Compose Infrastructure
+# Production Foundation
+###############################################################################
+
+services:
+
+
+  ###########################################################################
+  # Laravel Application
+  ###########################################################################
+
+  app:
+
+    build:
+
+      context: ./backend
+
+      dockerfile: Dockerfile
+
+
+    container_name: dental-healthcare-app
+
+
+    restart: unless-stopped
+
+
+    working_dir: /var/www/html
+
+
+    volumes:
+
+      - ./backend:/var/www/html
+
+
+    environment:
+
+      APP_ENV: ${APP_ENV:-local}
+
+      CONTAINER_ROLE: app
+
+
+    networks:
+
+      - dental-network
+
+
+
+  ###########################################################################
+  # Nginx Web Server
+  ###########################################################################
+
+  nginx:
+
+    image: nginx:alpine
+
+
+    container_name: dental-healthcare-nginx
+
+
+    restart: unless-stopped
+
+
+    ports:
+
+      - "${DOCKER_NGINX_PORT:-80}:80"
+
+
+    volumes:
+
+      - ./backend:/var/www/html
+
+      - ./backend/docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+
+
+    depends_on:
+
+      - app
+
+
+    networks:
+
+      - dental-network
+
+
+
+  ###########################################################################
+  # MySQL Database
+  ###########################################################################
+
+  mysql:
+
+    image: mysql:8.4
+
+
+    container_name: dental-healthcare-mysql
+
+
+    restart: unless-stopped
+
+
+    environment:
+
+      MYSQL_DATABASE: ${DB_DATABASE:-dental_healthcare}
+
+      MYSQL_USER: ${DB_USERNAME:-dental_user}
+
+      MYSQL_PASSWORD: ${DB_PASSWORD:-password}
+
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_password}
+
+
+    ports:
+
+      - "3306:3306"
+
+
+    volumes:
+
+      - mysql-data:/var/lib/mysql
+
+
+    networks:
+
+      - dental-network
+
+
+
+  ###########################################################################
+  # Redis Cache
+  ###########################################################################
+
+  redis:
+
+    image: redis:7-alpine
+
+
+    container_name: dental-healthcare-redis
+
+
+    restart: unless-stopped
+
+
+    ports:
+
+      - "6379:6379"
+
+
+    volumes:
+
+      - redis-data:/data
+
+
+    command:
+
+      - redis-server
+      - --appendonly yes
+
+
+    networks:
+
+      - dental-network
+
+
+
+###############################################################################
+# Networks
+###############################################################################
+
+networks:
+
+  dental-network:
+
+    driver: bridge
+
+
+
+###############################################################################
+# Persistent Storage
+###############################################################################
+
+volumes:
+
+  mysql-data:
+
+    driver: local
+
+
+  redis-data:
+
+    driver: local
