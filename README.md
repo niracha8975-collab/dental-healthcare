@@ -1,5 +1,3 @@
-# dental-healthcare
-README.md
 # Dental Healthcare Management System
 
 > Production-Ready Digital Dental Healthcare Platform for
