@@ -1,0 +1,51 @@
+#!/usr/bin/env php
+<?php
+
+use Illuminate\Foundation\Application;
+use Symfony\Component\Console\Input\ArgvInput;
+
+define('LARAVEL_START', microtime(true));
+
+
+/*
+|--------------------------------------------------------------------------
+| Register The Auto Loader
+|--------------------------------------------------------------------------
+|
+| Composer provides an autoload facility for PHP classes.
+| We require it here so Laravel can load all dependencies.
+|
+*/
+
+require __DIR__.'/vendor/autoload.php';
+
+
+/*
+|--------------------------------------------------------------------------
+| Bootstrap Laravel
+|--------------------------------------------------------------------------
+|
+| Create the application instance and run Artisan Console Kernel.
+|
+*/
+
+$app = require_once __DIR__.'/bootstrap/app.php';
+
+
+/*
+|--------------------------------------------------------------------------
+| Run Artisan Console
+|--------------------------------------------------------------------------
+|
+| Handle the incoming command and return the exit code.
+|
+*/
+
+$status = $app->make(
+    Illuminate\Contracts\Console\Kernel::class
+)->handle(
+    new ArgvInput
+);
+
+
+exit($status);
