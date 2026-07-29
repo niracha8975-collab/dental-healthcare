@@ -1,0 +1,213 @@
+###############################################################################
+# Dental Healthcare Management System
+# GitHub Actions Continuous Integration
+# Laravel 12 Production Foundation
+###############################################################################
+
+name: Backend CI
+
+
+
+###############################################################################
+# Trigger
+###############################################################################
+
+on:
+
+  push:
+
+    branches:
+
+      - main
+
+      - develop
+
+
+  pull_request:
+
+    branches:
+
+      - main
+
+      - develop
+
+
+
+###############################################################################
+# Jobs
+###############################################################################
+
+jobs:
+
+
+  ###########################################################################
+  # Laravel Testing
+  ###########################################################################
+
+  laravel-test:
+
+
+    name: Laravel Test
+
+
+    runs-on: ubuntu-latest
+
+
+
+    services:
+
+
+      mysql:
+
+        image: mysql:8.4
+
+
+        env:
+
+          MYSQL_DATABASE: testing
+
+          MYSQL_ROOT_PASSWORD: password
+
+
+        ports:
+
+          - 3306:3306
+
+
+        options:
+
+          --health-cmd="mysqladmin ping"
+
+          --health-interval=10s
+
+          --health-timeout=5s
+
+          --health-retries=5
+
+
+
+      redis:
+
+        image: redis:7-alpine
+
+
+        ports:
+
+          - 6379:6379
+
+
+
+    steps:
+
+
+      #######################################################################
+      # Checkout
+      #######################################################################
+
+      - name: Checkout Repository
+
+        uses: actions/checkout@v4
+
+
+
+      #######################################################################
+      # PHP Setup
+      #######################################################################
+
+      - name: Setup PHP
+
+        uses: shivammathur/setup-php@v2
+
+
+        with:
+
+          php-version: "8.3"
+
+          extensions: mbstring, intl, pdo_mysql, zip
+
+          tools: composer
+
+
+
+      #######################################################################
+      # Composer Install
+      #######################################################################
+
+      - name: Install Dependencies
+
+        working-directory: backend
+
+        run: composer install --prefer-dist --no-progress
+
+
+
+      #######################################################################
+      # Environment
+      #######################################################################
+
+      - name: Prepare Environment
+
+        working-directory: backend
+
+        run: |
+
+          cp .env.example .env
+
+          php artisan key:generate
+
+
+
+      #######################################################################
+      # Code Style
+      #######################################################################
+
+      - name: Laravel Pint Check
+
+        working-directory: backend
+
+        run: composer lint
+
+
+
+      #######################################################################
+      # PHPUnit
+      #######################################################################
+
+      - name: Run Tests
+
+        working-directory: backend
+
+        run: composer test
+
+
+
+  ###########################################################################
+  # Docker Validation
+  ###########################################################################
+
+  docker-build:
+
+
+    name: Docker Build Validation
+
+
+    runs-on: ubuntu-latest
+
+
+
+    steps:
+
+
+      - name: Checkout Repository
+
+        uses: actions/checkout@v4
+
+
+
+      - name: Build Backend Image
+
+        run: |
+
+          docker build \
+          -t dental-healthcare-backend \
+          ./backend
