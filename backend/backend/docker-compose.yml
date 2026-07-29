@@ -1,0 +1,298 @@
+###############################################################################
+# Dental Healthcare Management System
+# Docker Compose Configuration
+# Laravel 12 Backend Infrastructure
+###############################################################################
+
+services:
+
+
+  ###########################################################################
+  # Laravel Application
+  ###########################################################################
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: dental_backend_app
+
+    restart: unless-stopped
+
+    working_dir: /var/www/html
+
+    volumes:
+      - ./:/var/www/html
+
+    environment:
+      CONTAINER_ROLE: app
+
+    networks:
+      - dental_network
+
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+      redis:
+        condition: service_started
+
+
+
+  ###########################################################################
+  # Nginx Web Server
+  ###########################################################################
+
+  nginx:
+
+    image: nginx:alpine
+
+    container_name: dental_backend_nginx
+
+    restart: unless-stopped
+
+
+    ports:
+
+      - "8080:80"
+
+
+    volumes:
+
+      - ./:/var/www/html
+
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+
+
+    depends_on:
+
+      - app
+
+
+    networks:
+
+      - dental_network
+
+
+
+  ###########################################################################
+  # MySQL Database
+  ###########################################################################
+
+  mysql:
+
+    image: mysql:8.4
+
+
+    container_name: dental_mysql
+
+
+    restart: unless-stopped
+
+
+    environment:
+
+      MYSQL_DATABASE: ${DB_DATABASE}
+
+      MYSQL_USER: ${DB_USERNAME}
+
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+
+      MYSQL_ROOT_PASSWORD: root_password_change_me
+
+
+      TZ: Asia/Bangkok
+
+
+    ports:
+
+      - "3306:3306"
+
+
+    volumes:
+
+      - mysql_data:/var/lib/mysql
+
+
+      - ./docker/mysql/my.cnf:/etc/mysql/conf.d/custom.cnf
+
+
+    healthcheck:
+
+      test:
+
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "localhost"
+        ]
+
+      interval: 10s
+
+      timeout: 5s
+
+      retries: 5
+
+
+    networks:
+
+      - dental_network
+
+
+
+  ###########################################################################
+  # Redis
+  ###########################################################################
+
+  redis:
+
+    image: redis:7-alpine
+
+
+    container_name: dental_redis
+
+
+    restart: unless-stopped
+
+
+    ports:
+
+      - "6379:6379"
+
+
+    volumes:
+
+      - redis_data:/data
+
+
+    command:
+
+      redis-server --appendonly yes
+
+
+    networks:
+
+      - dental_network
+
+
+
+  ###########################################################################
+  # Queue Worker
+  ###########################################################################
+
+  queue:
+
+    build:
+
+      context: .
+
+      dockerfile: Dockerfile
+
+
+    container_name: dental_queue_worker
+
+
+    restart: unless-stopped
+
+
+    working_dir: /var/www/html
+
+
+    command:
+
+      php artisan queue:work
+      --tries=3
+      --timeout=120
+
+
+    volumes:
+
+      - ./:/var/www/html
+
+
+    depends_on:
+
+      - redis
+
+      - mysql
+
+
+    networks:
+
+      - dental_network
+
+
+
+  ###########################################################################
+  # Laravel Scheduler
+  ###########################################################################
+
+  scheduler:
+
+
+    build:
+
+      context: .
+
+      dockerfile: Dockerfile
+
+
+    container_name: dental_scheduler
+
+
+    restart: unless-stopped
+
+
+    working_dir: /var/www/html
+
+
+    command:
+
+      sh -c "while true; do php artisan schedule:run; sleep 60; done"
+
+
+    volumes:
+
+      - ./:/var/www/html
+
+
+    depends_on:
+
+      - mysql
+
+      - redis
+
+
+    networks:
+
+      - dental_network
+
+
+
+###############################################################################
+# Persistent Storage
+###############################################################################
+
+volumes:
+
+
+  mysql_data:
+
+
+  redis_data:
+
+
+
+###############################################################################
+# Network
+###############################################################################
+
+networks:
+
+
+  dental_network:
+
+    driver: bridge
