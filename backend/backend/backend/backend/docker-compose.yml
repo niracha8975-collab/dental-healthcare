@@ -1,0 +1,237 @@
+# Dental Healthcare Management System
+# Docker Compose Production Foundation
+# Laravel 12 + PHP 8.3 + MySQL 8.4 + Redis 7 + Nginx
+
+
+services:
+
+
+  ###########################################################################
+  # Laravel PHP Application
+  ###########################################################################
+
+  app:
+
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: dental-healthcare-app
+
+    restart: unless-stopped
+
+
+    working_dir: /var/www/html
+
+
+    volumes:
+
+      - ./:/var/www/html
+
+
+    environment:
+
+      APP_ENV: ${APP_ENV}
+
+      APP_DEBUG: ${APP_DEBUG}
+
+
+    depends_on:
+
+      mysql:
+        condition: service_healthy
+
+      redis:
+        condition: service_healthy
+
+
+    networks:
+
+      - dental-network
+
+
+
+  ###########################################################################
+  # Nginx Web Server
+  ###########################################################################
+
+  nginx:
+
+    image: nginx:1.27-alpine
+
+
+    container_name: dental-healthcare-nginx
+
+
+    restart: unless-stopped
+
+
+    ports:
+
+      - "${DOCKER_NGINX_PORT:-80}:80"
+
+
+    volumes:
+
+      - ./:/var/www/html
+
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+
+
+    depends_on:
+
+      - app
+
+
+    networks:
+
+      - dental-network
+
+
+
+  ###########################################################################
+  # MySQL Database
+  ###########################################################################
+
+  mysql:
+
+    image: mysql:8.4
+
+
+    container_name: dental-healthcare-mysql
+
+
+    restart: unless-stopped
+
+
+    environment:
+
+      MYSQL_DATABASE: ${DB_DATABASE}
+
+      MYSQL_USER: ${DB_USERNAME}
+
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_password}
+
+
+      TZ: Asia/Bangkok
+
+
+    ports:
+
+      - "3306:3306"
+
+
+    volumes:
+
+      - mysql-data:/var/lib/mysql
+
+      - ./docker/mysql/my.cnf:/etc/mysql/conf.d/custom.cnf
+
+
+    healthcheck:
+
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "localhost"
+        ]
+
+      interval: 10s
+
+      timeout: 5s
+
+      retries: 5
+
+
+    networks:
+
+      - dental-network
+
+
+
+  ###########################################################################
+  # Redis Cache / Queue
+  ###########################################################################
+
+  redis:
+
+    image: redis:7-alpine
+
+
+    container_name: dental-healthcare-redis
+
+
+    restart: unless-stopped
+
+
+    ports:
+
+      - "6379:6379"
+
+
+    volumes:
+
+      - redis-data:/data
+
+      - ./docker/redis/redis.conf:/usr/local/etc/redis/redis.conf
+
+
+    command:
+
+      [
+        "redis-server",
+        "/usr/local/etc/redis/redis.conf"
+      ]
+
+
+    healthcheck:
+
+      test:
+
+        [
+          "CMD",
+          "redis-cli",
+          "ping"
+        ]
+
+      interval: 10s
+
+      timeout: 5s
+
+      retries: 5
+
+
+    networks:
+
+      - dental-network
+
+
+
+###########################################################################
+# Networks
+###########################################################################
+
+networks:
+
+  dental-network:
+
+    driver: bridge
+
+
+
+###########################################################################
+# Persistent Volumes
+###########################################################################
+
+volumes:
+
+
+  mysql-data:
+
+
+  redis-data:
